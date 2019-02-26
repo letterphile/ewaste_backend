@@ -41,6 +41,10 @@ INSTALLED_APPS = [
     'graphene_django',
 ]
 
+GRAPHENE = {
+    'SCHEMA': 'ewasteshop.schema.schema' # Where your Graphene schema lives
+}
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

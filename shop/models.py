@@ -25,7 +25,7 @@ class Component(models.Model):
     name = models.CharField(max_length=50)
     specs = models.TextField()
     added = models.DateTimeField(auto_now_add=True)
-
+    model_number = models.PositiveIntegerField()
     class Meta:
         ordering = ('id',)
     def __str__(self):
@@ -36,13 +36,36 @@ class Device(models.Model):
     name = models.CharField(max_length=50)
     components = models.ManyToManyField(Component,related_name='components')
     sellers = models.ManyToManyField(CustomUser,related_name='sellers')
-    price = models.PositiveIntegerField(default=0)
-
+    price = models.PositiveIntegerField()
+    model_numer = models.PositiveIntegerField()
     added = models.DateTimeField(auto_now_add=True)
     class Meta:
         ordering = ('id',)
     def __str__(self):
         return str(self.name)
+
+class Cart(models.Model):
+    buyer = models.OneToOneField(CustomUser,on_delete=models.CASCADE,related_name='buyer_cart')
+    items = models.ManyToManyField(Device,related_name='items_cart')
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('id',)
+    def __str__(self):
+        return str(self.buyer.name)
+
+class Order(models.Model):
+    buyer = models.ForeignKey(CustomUser,on_delete = models.CASCADE,related_name='buyer_order')
+    items = models.ManyToManyField(Device,related_name='items_order')
+    date = models.DateTimeField(auto_now_add=True)
+    approval = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ('id',)
+    def __str__(self):
+        return str(self.buyer.name)
+
+
 
 
     
