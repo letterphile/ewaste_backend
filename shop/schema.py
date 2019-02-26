@@ -4,7 +4,6 @@ from graphene_django.types import DjangoObjectType
 
 from . import models
 
-
 class DeviceType(DjangoObjectType):
     class Meta:
         model = models.Device
@@ -96,8 +95,21 @@ class CreateDevice(graphene.Mutation):
             name=device.name,
             components_id=components_id
         )
+class CreateCustomUser(graphene.Mutation):
+    customuser = graphene.Field(CustomUserType)
+
+    class Arguments:
+        username = graphene.String(required=True)
+        password = graphene.String(required=True)
+        email = graphene.String(required=True)
+        usertype = graphene.String(required=True)
+        
+    def mutate(self,info,username,password,email,usertype):
+        customuser = models.CustomUser(username=username,password=password,email=email,usertype=usertype)
+        customuser.save()
+        return CreateCustomUser(customuser)
 
 class Mutation(graphene.ObjectType):
     create_component = CreateComponent.Field()
     create_device = CreateDevice.Field()
-    
+    create_customuser=CreateCustomUser.Field()    
