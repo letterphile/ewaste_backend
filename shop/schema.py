@@ -13,22 +13,52 @@ class ComponentType(DjangoObjectType):
     class Meta:
         model = models.Component
 
+class CustomUserType(DjangoObjectType):
+    class Meta:
+        model = models.CustomUser
+
+class OrderType(DjangoObjectType):
+    class Meta:
+        model = models.Order
+
+class CartType(DjangoObjectType):
+    class Meta:
+        model = models.Cart
+
 class Query(graphene.AbstractType):
     all_device= graphene.List(DeviceType)
-    all_component= graphene.List(ComponentType) 
-    
-    device = graphene.Field(DeviceType,id=graphene.Int())
+    all_component= graphene.List(ComponentType)
+    all_cart= graphene.List(CartType) 
+    all_order= graphene.List(OrderType)
 
-    def resolve_all_device(self,args):
+    device = graphene.Field(DeviceType,id=graphene.Int())
+    cart = graphene.Field(CartType,id=graphene.Int())
+    order = graphene.Field(OrderType,id=graphene.Int())
+    component = graphene.Field(ComponentType,id=graphene.Int())
+
+    def resolve_all_device(self,info,**kwargs):
         print("args: "+str(args))
         return models.Device.objects.all()
 
-    def resolve_all_component(self,args):
+    def resolve_all_component(self,info,**kwargs):
         print("args: "+str(args))
         return models.Component.objects.all()
 
-    def resolve_device(self,args,id):
+    def resolve_device(self,info,**kwargs):
+        id = kwargs.get('id')
         return models.Device.objects.get(id=id)
+
+    def resolve_component(self,info,**kwargs):
+        id = kwargs.get('id')
+        return models.Component.objects.get(id=id)
+
+    def resolve_cart(self,info,**kwargs):
+        id = kwargs.get('id')
+        return models.Cart.objects.get(id=id)
+    
+    def resolve_order(self,info,**kwargs):
+        id = kwargs.get('id')
+        return models.Order.objects.get(id=id)
 
 class CreateComponent(graphene.Mutation):
     id = graphene.Int()
@@ -66,6 +96,8 @@ class CreateDevice(graphene.Mutation):
             name=device.name,
             components_id=components_id
         )
+
 class Mutation(graphene.ObjectType):
     create_component = CreateComponent.Field()
     create_device = CreateDevice.Field()
+    
