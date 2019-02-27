@@ -103,7 +103,7 @@ class CreateDevice(graphene.Mutation):
     class Arguments:
         name=graphene.String()
         model_number=graphene.Int()
-    def mutate(self,info,name,price,model_number):
+    def mutate(self,info,name,model_number):
         current_user = info.context.user
         if current_user.is_anonymous:
             raise Exception("Not Logged in")
@@ -202,8 +202,7 @@ class AddBannerCart(graphene.Mutation):
     class Arguments:
         buyer= CustomUserInput(required=True)
         banner = BannerInput(required=True)
-        quantity = graphene.Int(required=True)
-    def mutate(self,info,buyer,banner,quantity):
+    def mutate(self,info,buyer,banner):
         buyer= models.CustomUser.objects.get(username=buyer.username)
         banner = models.Banner.objects.get(id=banner.id)
         try :
@@ -354,4 +353,5 @@ class Mutation(graphene.ObjectType):
     move_banner_wishlist = MoveBannerWishlist.Field()
     create_order = CreateOrder.Field()
     approve_order = ApproveOrder.Field()
+    add_banner_wishlist=AddBannerWishlist.Field()
     
