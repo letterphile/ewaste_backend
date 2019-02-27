@@ -47,7 +47,6 @@ class Banner(models.Model):
     seller = models.ForeignKey(CustomUser,related_name='banner_seller',on_delete=models.CASCADE)
     device = models.ForeignKey(Device,related_name='banner_device',on_delete=models.CASCADE)
     price = models.PositiveIntegerField()
-
     class Meta:
         ordering = ('id',)
     def __str__(self):
@@ -55,8 +54,8 @@ class Banner(models.Model):
 
 class Cart(models.Model):
     buyer = models.OneToOneField(CustomUser,on_delete=models.CASCADE,related_name='buyer_cart')
-    items = models.ManyToManyField(Device,related_name='items_cart')
     updated = models.DateTimeField(auto_now=True)
+    banners = models.ManyToManyField(Banner,related_name='banner_cart')
 
     class Meta:
         ordering = ('id',)

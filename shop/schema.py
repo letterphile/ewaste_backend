@@ -1,5 +1,5 @@
 import graphene
-
+from django.core.exceptions import ObjectDoesNotExist
 from graphene_django.types import DjangoObjectType
 
 from . import models
@@ -39,16 +39,13 @@ class Query(graphene.AbstractType):
     cart = graphene.Field(CartType,id=graphene.Int())
     order = graphene.Field(OrderType,id=graphene.Int())
     component = graphene.Field(ComponentType,id=graphene.Int())
-
+    
     def resolve_all_device(self,info,**kwargs):
-        print("args: "+str(args))
         return models.Device.objects.all()
     def resolve_all_banner(self,info,**kwargs):
-        print("args: "+str(args))
         return models.Banner.objects.all()
     
     def resolve_all_component(self,info,**kwargs):
-        print("args: "+str(args))
         return models.Component.objects.all()
 
     def resolve_device(self,info,**kwargs):
@@ -138,7 +135,8 @@ class CustomUserInput(graphene.InputObjectType):
     username = graphene.String()
 class ComponentInput(graphene.InputObjectType):
     id = graphene.Int()
-
+class BannerInput(graphene.InputObjectType):
+    id = graphene.Int()
 class AddComponent(graphene.Mutation):
     customuser = graphene.Field(CustomUserType)
     device = graphene.Field(DeviceType)
@@ -192,29 +190,25 @@ class AddDeviceSeller(graphene.Mutation):
             sellers = sellers,
             device = device,
         )
-class AddDeviceBuyer(graphene.Mutation):
-    sellers = graphene.List(CustomUserType)
-    device = graphene.Field(DeviceType)
+class AddBannerCart(graphene.Mutation):
+    buyer = graphene.Field(CustomUserType)
+    banners = graphene.List(BannerType)
     class Arguments:
-        username = graphene.String(required=True)
-        device = DeviceInput(required=True)
-    def mutate(self,info,username,device):
-        current_user = info.context.user
-        if current_user.is_anonymous:
-            raise Exception("Not Logged in")
-        if current_user.username != username :
-            raise Exception("Not a Valid User!!")
-        if device is not None:
-            device_id = device.id
-            device = models.Device.objects.get(id=device_id)
-            user = models.CustomUser.objects.get(username=username)
-            if device.manufacturer.username == current_user.username :
-               device.sellers.add(user)
-               device.save()
-               sellers = device.sellers.all()
-        return  AddDeviceSeller(
-            sellers = sellers,
-            device = device,
+        buyer= CustomUserInput(required=True)
+        banner = BannerInput(required=True)
+    def mutate(self,info,buyer,banner):
+        buyer= models.CustomUser.objects.get(username=buyer.username)
+        banner = models.Banner.objects.get(id=banner.id)
+        try :
+            cart = models.Cart.objects.get(buyer=buyer)
+        except ObjectDoesNotExist:
+            cart = models.Cart.objects.create(buyer=buyer)
+        cart.banners.add(banner)
+        cart.save()
+        banners=cart.banners.all()
+        return  AddBannerCart(
+            buyer=buyer,
+            banners=banners
         )
 
 
@@ -263,3 +257,4 @@ class Mutation(graphene.ObjectType):
     add_component = AddComponent.Field()
     add_device_seller = AddDeviceSeller.Field()
     create_banner = CreateBanner.Field()
+    add_banner_cart = AddBannerCart.Field()    
