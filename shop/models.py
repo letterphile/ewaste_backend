@@ -42,11 +42,12 @@ class Device(models.Model):
     class Meta:
         ordering = ('id',)
     def __str__(self):
-        return str(self.username)
+        return str(self.name)
 class Banner(models.Model):
     seller = models.ForeignKey(CustomUser,related_name='banner_seller',on_delete=models.CASCADE)
     device = models.ForeignKey(Device,related_name='banner_device',on_delete=models.CASCADE)
     price = models.PositiveIntegerField()
+    quantity = models.PositiveIntegerField(default=1)
     class Meta:
         ordering = ('id',)
     def __str__(self):

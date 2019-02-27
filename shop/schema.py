@@ -218,6 +218,51 @@ class AddBannerCart(graphene.Mutation):
             buyer=buyer,
             banners=banners
         )
+class AddBannerWishlist(graphene.Mutation):
+    buyer = graphene.Field(CustomUserType)
+    banners = graphene.List(BannerType)
+    class Arguments:
+        buyer= CustomUserInput(required=True)
+        banner = BannerInput(required=True)
+    def mutate(self,info,buyer,banner):
+        buyer= models.CustomUser.objects.get(username=buyer.username)
+        banner = models.Banner.objects.get(id=banner.id)
+        try :
+            wishlist= models.Wishlist.objects.get(buyer=buyer)
+        except ObjectDoesNotExist:
+            wishlist = models.Wishlist.objects.create(buyer=buyer)
+        wishlist.banners.add(banner)
+        wishlist.save()
+        banners=wishlist.banners.all()
+        return  AddBannerWishlist(
+            buyer=buyer,
+            banners=banners
+        )
+
+class MoveBannerWishlist(graphene.Mutation):
+    buyer = graphene.Field(CustomUserType)
+    banners = graphene.List(BannerType)
+    class Arguments:
+        buyer= CustomUserInput(required=True)
+        banner = BannerInput(required=True)
+    def mutate(self,info,buyer,banner):
+        buyer= models.CustomUser.objects.get(username=buyer.username)
+        cart = models.Cart.objects.get(buyer=buyer)
+        banner = cart.banners.get(id=banner.id) 
+        try :
+            wishlist= models.Wishlist.objects.get(buyer=buyer)
+        except ObjectDoesNotExist:
+            wishlist = models.Wishlist.objects.create(buyer=buyer)
+        wishlist.banners.add(banner)
+        wishlist.save()
+        cart.banners.remove(banner)
+        cart.save()
+        banners=wishlist.banners.all()
+        return  MoveBannerWishlist(
+            buyer=buyer,
+            banners = banners
+        )
+
 
 class CreateOrder(graphene.Mutation):
     buyer = graphene.Field(CustomUserType)
@@ -277,6 +322,8 @@ class CreateBanner(graphene.Mutation):
         return CreateBanner(
             seller=seller,banner = banner
         )
+
+
 class ApproveOrder(graphene.Mutation):
     order = graphene.Field(OrderType)
     approval= graphene.Boolean()
@@ -296,7 +343,6 @@ class ApproveOrder(graphene.Mutation):
             order=order,approval=order.approval
         )
 
-
 class Mutation(graphene.ObjectType):
     create_component = CreateComponent.Field()
     create_device = CreateDevice.Field()
@@ -306,6 +352,7 @@ class Mutation(graphene.ObjectType):
     add_device_seller = AddDeviceSeller.Field()
     create_banner = CreateBanner.Field()
     add_banner_cart = AddBannerCart.Field()
+    move_banner_wishlist = MoveBannerWishlist.Field()
     create_order = CreateOrder.Field()
     approve_order = ApproveOrder.Field()
     
