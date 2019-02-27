@@ -204,7 +204,8 @@ class AddBannerCart(graphene.Mutation):
     class Arguments:
         buyer= CustomUserInput(required=True)
         banner = BannerInput(required=True)
-    def mutate(self,info,buyer,banner):
+        quantity = graphene.Int(required=True)
+    def mutate(self,info,buyer,banner,quantity):
         buyer= models.CustomUser.objects.get(username=buyer.username)
         banner = models.Banner.objects.get(id=banner.id)
         try :
@@ -263,7 +264,6 @@ class MoveBannerWishlist(graphene.Mutation):
             banners = banners
         )
 
-
 class CreateOrder(graphene.Mutation):
     buyer = graphene.Field(CustomUserType)
     banners = graphene.List(BannerType)
@@ -305,6 +305,7 @@ class ChangePassword(graphene.Mutation):
         customuser.save()
 
         return ChangePassword(customuser) 
+
 class CreateBanner(graphene.Mutation):
     seller = graphene.Field(CustomUserType)
     banner = graphene.Field(BannerType)
