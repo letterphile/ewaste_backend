@@ -99,18 +99,16 @@ class CreateDevice(graphene.Mutation):
     id = graphene.Int()
     name=graphene.String()
     manufacturer = graphene.Field(CustomUserType)
-    price = graphene.Int()
     model_number = graphene.Int()
     class Arguments:
         name=graphene.String()
-        price=graphene.Int()
         model_number=graphene.Int()
     def mutate(self,info,name,price,model_number):
         current_user = info.context.user
         if current_user.is_anonymous:
             raise Exception("Not Logged in")
         
-        device = models.Device(name=name,manufacturer=current_user,price=price,model_number=model_number)
+        device = models.Device(name=name,manufacturer=current_user,model_number=model_number)
         device.save()
         return CreateDevice(
             id=device.id,
