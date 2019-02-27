@@ -35,9 +35,10 @@ class Component(models.Model):
 class Device(models.Model):
     name = models.CharField(max_length=50)
     components = models.ManyToManyField(Component,related_name='components')
+    manufacturer = models.ForeignKey(CustomUser,related_name='device_manufacturer',on_delete=models.CASCADE)
     sellers = models.ManyToManyField(CustomUser,related_name='sellers')
     price = models.PositiveIntegerField()
-    model_numer = models.PositiveIntegerField()
+    model_number = models.PositiveIntegerField()
     added = models.DateTimeField(auto_now_add=True)
     class Meta:
         ordering = ('id',)

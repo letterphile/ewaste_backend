@@ -30,6 +30,8 @@ class Query(graphene.AbstractType):
     all_cart= graphene.List(CartType) 
     all_order= graphene.List(OrderType)
 
+    me = graphene.Field(CustomUserType)
+
     device = graphene.Field(DeviceType,id=graphene.Int())
     cart = graphene.Field(CartType,id=graphene.Int())
     order = graphene.Field(OrderType,id=graphene.Int())
@@ -59,6 +61,13 @@ class Query(graphene.AbstractType):
         id = kwargs.get('id')
         return models.Order.objects.get(id=id)
 
+
+    def resolve_me(self,info):
+        user = info.context.user
+        if user.is_anonymous:
+            raise Exception("Not Logged in")
+        return user
+
 class CreateComponent(graphene.Mutation):
     id = graphene.Int()
     name= graphene.String()
@@ -80,20 +89,24 @@ class CreateComponent(graphene.Mutation):
 class CreateDevice(graphene.Mutation):
     id = graphene.Int()
     name=graphene.String()
-    components_id = graphene.List(graphene.Int)
+    manufacturer = graphene.Field(CustomUserType)
+    price = graphene.Int()
+    model_number = graphene.Int()
     class Arguments:
         name=graphene.String()
-        components_id = graphene.List(graphene.Int)
-    def mutate(self,info,name,components_id):
-        device = models.Device(name=name)
+        price=graphene.Int()
+        model_number=graphene.Int()
+    def mutate(self,info,name,price,model_number):
+        current_user = info.context.user
+        if current_user.is_anonymous:
+            raise Exception("Not Logged in")
+        
+        device = models.Device(name=name,manufacturer=current_user,price=price,model_number=model_number)
         device.save()
-        for component_id in components_id:
-            device.components.add(models.Component.objects.get(id=component_id))
-            device.save()
         return CreateDevice(
             id=device.id,
             name=device.name,
-            components_id=components_id
+            manufacturer=current_user
         )
 class CreateCustomUser(graphene.Mutation):
     customuser = graphene.Field(CustomUserType)
@@ -109,7 +122,63 @@ class CreateCustomUser(graphene.Mutation):
         customuser.save()
         return CreateCustomUser(customuser)
 
+class DeviceInput(graphene.InputObjectType):
+    id = graphene.Int()
+
+class ComponentInput(graphene.InputObjectType):
+    id = graphene.Int()
+
+class AddComponent(graphene.Mutation):
+    customuser = graphene.Field(CustomUserType)
+    device = graphene.Field(DeviceType)
+    component = graphene.Field(ComponentType)
+    class Arguments:
+        username = graphene.String(required=True)
+        device = DeviceInput(required=True)
+        component = ComponentInput(required=True) 
+
+    def mutate(self,info,username,device,component):
+        current_user = info.context.user
+        if current_user.is_anonymous:
+            raise Exception("Not Logged in")
+        if current_user.username != username :
+            raise Exception("Not a Valid User!!")
+        if device is not None and component is not None:
+            device_id = device.id
+            component_id = component.id
+            device = models.Device.objects.get(id=device_id)
+            component = models.Component.objects.get(id=component_id)
+            if device.manufacturer.username == current_user.username :
+               device.components.add(component) 
+               device.save()
+        
+        return  AddComponent(
+            customuser=current_user,
+            device = device,
+            component=component
+        )
+
+class ChangePassword(graphene.Mutation):
+    customuser = graphene.Field(CustomUserType)
+    
+    class Arguments:
+        username = graphene.String(required=True)
+        password = graphene.String(required=True)
+
+    def mutate(self,info,username,password):
+        current_user = info.context.user 
+        if current_user.is_anonymous:
+            raise Exception("Not Logged in")
+        if current_user.username != username :
+            raise Exception("Not a Valid User!!")
+        customuser = models.CustomUser.objects.get(username=username)
+        customuser.set_password(password)
+        customuser.save()
+
+        return ChangePassword(customuser) 
 class Mutation(graphene.ObjectType):
     create_component = CreateComponent.Field()
     create_device = CreateDevice.Field()
-    create_customuser=CreateCustomUser.Field()    
+    create_customuser=CreateCustomUser.Field() 
+    change_password = ChangePassword.Field()   
+    add_component = AddComponent.Field()
