@@ -29,7 +29,7 @@ class Component(models.Model):
     class Meta:
         ordering = ('id',)
     def __str__(self):
-        return str(self.name)
+        return str(self.username)
 
 
 class Device(models.Model):
@@ -42,7 +42,7 @@ class Device(models.Model):
     class Meta:
         ordering = ('id',)
     def __str__(self):
-        return str(self.name)
+        return str(self.username)
 class Banner(models.Model):
     seller = models.ForeignKey(CustomUser,related_name='banner_seller',on_delete=models.CASCADE)
     device = models.ForeignKey(Device,related_name='banner_device',on_delete=models.CASCADE)
@@ -60,19 +60,29 @@ class Cart(models.Model):
     class Meta:
         ordering = ('id',)
     def __str__(self):
-        return str(self.buyer.name)
+        return str(self.buyer.username)
 
 class Order(models.Model):
     buyer = models.ForeignKey(CustomUser,on_delete = models.CASCADE,related_name='buyer_order')
-    items = models.ManyToManyField(Device,related_name='items_order')
+    banners= models.ManyToManyField(Banner,related_name='banner_order')
     date = models.DateTimeField(auto_now_add=True)
     approval = models.BooleanField(default=False)
 
     class Meta:
         ordering = ('id',)
     def __str__(self):
-        return str(self.buyer.name)
+        return str(self.buyer.username)
 
+
+class Wishlist(models.Model):
+    buyer = models.OneToOneField(CustomUser,on_delete=models.CASCADE,related_name='buyer_wishlist')
+    updated = models.DateTimeField(auto_now=True)
+    banners = models.ManyToManyField(Banner,related_name='banner_wishlist')
+
+    class Meta:
+        ordering = ('id',)
+    def __str__(self):
+        return str(self.buyer.username)
 
 
 

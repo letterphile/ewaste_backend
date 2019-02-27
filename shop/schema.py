@@ -47,11 +47,13 @@ class Query(graphene.AbstractType):
     
     def resolve_all_component(self,info,**kwargs):
         return models.Component.objects.all()
-
+    def resolve_all_cart(self,info,**kwargs):
+        return models.Cart.objects.all()
     def resolve_device(self,info,**kwargs):
         id = kwargs.get('id')
         return models.Device.objects.get(id=id)
-
+    def resolve_all_order(self,info,**kwargs):
+        return models.Order.objects.all()
     def resolve_component(self,info,**kwargs):
         id = kwargs.get('id')
         return models.Component.objects.get(id=id)
@@ -129,6 +131,8 @@ class CreateCustomUser(graphene.Mutation):
         customuser.save()
         return CreateCustomUser(customuser)
 
+
+#InputTypes
 class DeviceInput(graphene.InputObjectType):
     id = graphene.Int()
 class CustomUserInput(graphene.InputObjectType):
@@ -137,6 +141,10 @@ class ComponentInput(graphene.InputObjectType):
     id = graphene.Int()
 class BannerInput(graphene.InputObjectType):
     id = graphene.Int()
+class OrderInput(graphene.InputObjectType):
+    id = graphene.Int()
+
+
 class AddComponent(graphene.Mutation):
     customuser = graphene.Field(CustomUserType)
     device = graphene.Field(DeviceType)
@@ -211,6 +219,28 @@ class AddBannerCart(graphene.Mutation):
             banners=banners
         )
 
+class CreateOrder(graphene.Mutation):
+    buyer = graphene.Field(CustomUserType)
+    banners = graphene.List(BannerType)
+    approval = graphene.Boolean()
+    class Arguments:
+        buyer= CustomUserInput(required=True)
+    def mutate(self,info,buyer):
+        buyer= models.CustomUser.objects.get(username=buyer.username)
+        order = models.Order.objects.create(buyer=buyer)
+        cart = models.Cart.objects.get(buyer=buyer)
+        banners = cart.banners.all()
+        for banner in banners:
+            order.banners.add(banner)
+            order.save()
+        cart.save()
+        banners=cart.banners.all()
+        return  CreateOrder(
+            buyer=buyer,
+            banners=banners,
+            approval = order.approval
+        )
+
 
 class ChangePassword(graphene.Mutation):
     customuser = graphene.Field(CustomUserType)
@@ -247,6 +277,24 @@ class CreateBanner(graphene.Mutation):
         return CreateBanner(
             seller=seller,banner = banner
         )
+class ApproveOrder(graphene.Mutation):
+    order = graphene.Field(OrderType)
+    approval= graphene.Boolean()
+    class Arguments:
+        order =  OrderInput(required=True)
+    def mutate(self,info,order):
+        order = models.Order.objects.get(id=order.id)
+        order.approval = True
+        order.save()
+        cart = models.Cart.objects.get(buyer=order.buyer)
+
+        banners  = order.banners.all()
+        for banner in banners:
+            cart.banners.remove(banner)
+            cart.save()
+        return ApproveOrder(
+            order=order,approval=order.approval
+        )
 
 
 class Mutation(graphene.ObjectType):
@@ -257,4 +305,7 @@ class Mutation(graphene.ObjectType):
     add_component = AddComponent.Field()
     add_device_seller = AddDeviceSeller.Field()
     create_banner = CreateBanner.Field()
-    add_banner_cart = AddBannerCart.Field()    
+    add_banner_cart = AddBannerCart.Field()
+    create_order = CreateOrder.Field()
+    approve_order = ApproveOrder.Field()
+    
