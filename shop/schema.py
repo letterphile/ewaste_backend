@@ -1,7 +1,7 @@
 import graphene
 from django.core.exceptions import ObjectDoesNotExist
 from graphene_django.types import DjangoObjectType
-
+from django.contrib.postgres.search import TrigramSimilarity
 from . import models
 
 class BannerType(DjangoObjectType):
@@ -94,7 +94,20 @@ class CreateComponent(graphene.Mutation):
             name=component.name,
             specs=component.specs
         )
+class DeviceSearch(graphene.Mutation):
+    devices = graphene.List(DeviceType)
 
+    class Arguments:
+        query = graphene.String(required=True)
+
+    def mutate(self,info,query):
+        results = models.Device.objects.annotate(
+        similarity=TrigramSimilarity('name',query),
+        ).filter(similarity__gt=0.0).order_by('-similarity')
+        print(results)
+        return DeviceSearch(
+            devices = results
+        )
 class CreateDevice(graphene.Mutation):
     id = graphene.Int()
     name=graphene.String()
@@ -354,4 +367,4 @@ class Mutation(graphene.ObjectType):
     create_order = CreateOrder.Field()
     approve_order = ApproveOrder.Field()
     add_banner_wishlist=AddBannerWishlist.Field()
-    
+    device_search = DeviceSearch.Field()    

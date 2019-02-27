@@ -6,6 +6,8 @@ graphene-django==2.2.0
 graphql-core==2.1
 graphql-relay==0.4.5
 promise==2.2.1
+psycopg2==2.7.7
+psycopg2-binary==2.7.7
 PyJWT==1.7.1
 pytz==2018.9
 Rx==1.6.1

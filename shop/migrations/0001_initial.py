@@ -6,7 +6,7 @@ import django.contrib.auth.validators
 from django.db import migrations, models
 import django.db.models.deletion
 import django.utils.timezone
-
+from django.contrib.postgres.operations import TrigramExtension
 
 class Migration(migrations.Migration):
 
@@ -17,6 +17,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        TrigramExtension(),
         migrations.CreateModel(
             name='CustomUser',
             fields=[
