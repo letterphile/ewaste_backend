@@ -4,6 +4,9 @@ from graphene_django.types import DjangoObjectType
 
 from . import models
 
+class BannerType(DjangoObjectType):
+    class Meta:
+        model = models.Banner
 class DeviceType(DjangoObjectType):
     class Meta:
         model = models.Device
@@ -29,7 +32,7 @@ class Query(graphene.AbstractType):
     all_component= graphene.List(ComponentType)
     all_cart= graphene.List(CartType) 
     all_order= graphene.List(OrderType)
-
+    all_banner=graphene.List(BannerType)
     me = graphene.Field(CustomUserType)
 
     device = graphene.Field(DeviceType,id=graphene.Int())
@@ -40,7 +43,10 @@ class Query(graphene.AbstractType):
     def resolve_all_device(self,info,**kwargs):
         print("args: "+str(args))
         return models.Device.objects.all()
-
+    def resolve_all_banner(self,info,**kwargs):
+        print("args: "+str(args))
+        return models.Banner.objects.all()
+    
     def resolve_all_component(self,info,**kwargs):
         print("args: "+str(args))
         return models.Component.objects.all()
@@ -60,6 +66,10 @@ class Query(graphene.AbstractType):
     def resolve_order(self,info,**kwargs):
         id = kwargs.get('id')
         return models.Order.objects.get(id=id)
+
+    def resolve_order(self,info,**kwargs):
+        id = kwargs.get('id')
+        return models.Banner.objects.get(id=id)
 
 
     def resolve_me(self,info):
@@ -124,7 +134,8 @@ class CreateCustomUser(graphene.Mutation):
 
 class DeviceInput(graphene.InputObjectType):
     id = graphene.Int()
-
+class CustomUserInput(graphene.InputObjectType):
+    username = graphene.String()
 class ComponentInput(graphene.InputObjectType):
     id = graphene.Int()
 
@@ -157,6 +168,55 @@ class AddComponent(graphene.Mutation):
             device = device,
             component=component
         )
+class AddDeviceSeller(graphene.Mutation):
+    sellers = graphene.List(CustomUserType)
+    device = graphene.Field(DeviceType)
+    class Arguments:
+        username = graphene.String(required=True)
+        device = DeviceInput(required=True)
+    def mutate(self,info,username,device):
+        current_user = info.context.user
+        if current_user.is_anonymous:
+            raise Exception("Not Logged in")
+        if current_user.username != username :
+            raise Exception("Not a Valid User!!")
+        if device is not None:
+            device_id = device.id
+            device = models.Device.objects.get(id=device_id)
+            user = models.CustomUser.objects.get(username=username)
+            if device.manufacturer.username == current_user.username :
+               device.sellers.add(user)
+               device.save()
+               sellers = device.sellers.all()
+        return  AddDeviceSeller(
+            sellers = sellers,
+            device = device,
+        )
+class AddDeviceBuyer(graphene.Mutation):
+    sellers = graphene.List(CustomUserType)
+    device = graphene.Field(DeviceType)
+    class Arguments:
+        username = graphene.String(required=True)
+        device = DeviceInput(required=True)
+    def mutate(self,info,username,device):
+        current_user = info.context.user
+        if current_user.is_anonymous:
+            raise Exception("Not Logged in")
+        if current_user.username != username :
+            raise Exception("Not a Valid User!!")
+        if device is not None:
+            device_id = device.id
+            device = models.Device.objects.get(id=device_id)
+            user = models.CustomUser.objects.get(username=username)
+            if device.manufacturer.username == current_user.username :
+               device.sellers.add(user)
+               device.save()
+               sellers = device.sellers.all()
+        return  AddDeviceSeller(
+            sellers = sellers,
+            device = device,
+        )
+
 
 class ChangePassword(graphene.Mutation):
     customuser = graphene.Field(CustomUserType)
@@ -176,9 +236,30 @@ class ChangePassword(graphene.Mutation):
         customuser.save()
 
         return ChangePassword(customuser) 
+class CreateBanner(graphene.Mutation):
+    seller = graphene.Field(CustomUserType)
+    banner = graphene.Field(BannerType)
+    class Arguments:
+        seller = CustomUserInput(required=True) 
+        device = DeviceInput(required=True)
+        price = graphene.Int(required=True)
+    def mutate(self,info,seller,device,price):
+        device = models.Device.objects.get(id=device.id)
+        seller = models.CustomUser.objects.get(username=seller.username)
+        if not device.sellers.all().filter(id=seller.id).exists():
+            raise Exception("Seller is not and Authorized device seller")
+        banner = models.Banner(seller =seller,device=device,price=price)
+        banner.save()
+        return CreateBanner(
+            seller=seller,banner = banner
+        )
+
+
 class Mutation(graphene.ObjectType):
     create_component = CreateComponent.Field()
     create_device = CreateDevice.Field()
     create_customuser=CreateCustomUser.Field() 
     change_password = ChangePassword.Field()   
     add_component = AddComponent.Field()
+    add_device_seller = AddDeviceSeller.Field()
+    create_banner = CreateBanner.Field()

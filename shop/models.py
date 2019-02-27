@@ -37,13 +37,21 @@ class Device(models.Model):
     components = models.ManyToManyField(Component,related_name='components')
     manufacturer = models.ForeignKey(CustomUser,related_name='device_manufacturer',on_delete=models.CASCADE)
     sellers = models.ManyToManyField(CustomUser,related_name='sellers')
-    price = models.PositiveIntegerField()
     model_number = models.PositiveIntegerField()
     added = models.DateTimeField(auto_now_add=True)
     class Meta:
         ordering = ('id',)
     def __str__(self):
         return str(self.name)
+class Banner(models.Model):
+    seller = models.ForeignKey(CustomUser,related_name='banner_seller',on_delete=models.CASCADE)
+    device = models.ForeignKey(Device,related_name='banner_device',on_delete=models.CASCADE)
+    price = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ('id',)
+    def __str__(self):
+        return "{} {}".format(str(self.seller),str(self.device))
 
 class Cart(models.Model):
     buyer = models.OneToOneField(CustomUser,on_delete=models.CASCADE,related_name='buyer_cart')
