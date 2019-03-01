@@ -137,7 +137,7 @@ class CreateCustomUser(graphene.Mutation):
     customuser = graphene.Field(CustomUserType)
 
     class Arguments:
-        firstname=graphene.Strinf(required=True)
+        firstname=graphene.String(required=True)
         lastname=graphene.String(required=True)
         username = graphene.String(required=True)
         password = graphene.String(required=True)
