@@ -39,6 +39,7 @@ class Query(graphene.AbstractType):
     cart = graphene.Field(CartType,id=graphene.Int())
     order = graphene.Field(OrderType,id=graphene.Int())
     component = graphene.Field(ComponentType,id=graphene.Int())
+    manufacturer = graphene.List(DeviceType,id=graphene.Int())
     
     def resolve_all_device(self,info,**kwargs):
         return models.Device.objects.all()
@@ -57,7 +58,11 @@ class Query(graphene.AbstractType):
     def resolve_component(self,info,**kwargs):
         id = kwargs.get('id')
         return models.Component.objects.get(id=id)
-
+    def resolve_manufacturer(self,info,**kwargs):
+        id = kwargs.get('id')
+        manufacturer = models.CustomUser.objects.get(id=id)
+        devices = models.Device.objects.all().filter(manufacturer=manufacturer)
+        return devices
     def resolve_cart(self,info,**kwargs):
         id = kwargs.get('id')
         return models.Cart.objects.get(id=id)
@@ -132,13 +137,15 @@ class CreateCustomUser(graphene.Mutation):
     customuser = graphene.Field(CustomUserType)
 
     class Arguments:
+        firstname=graphene.Strinf(required=True)
+        lastname=graphene.String(required=True)
         username = graphene.String(required=True)
         password = graphene.String(required=True)
         email = graphene.String(required=True)
         usertype = graphene.String(required=True)
         
     def mutate(self,info,username,password,email,usertype):
-        customuser = models.CustomUser(username=username,password=password,email=email,usertype=usertype)
+        customuser = models.CustomUser(username=username,password=password,email=email,usertype=usertype,first_name=firstname,last_name=lastname)
         customuser.save()
         return CreateCustomUser(customuser)
 
