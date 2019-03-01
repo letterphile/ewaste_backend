@@ -3,7 +3,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from graphene_django.types import DjangoObjectType
 from django.contrib.postgres.search import TrigramSimilarity
 from . import models
-
+from graphene_file_upload.scalars import Upload
 class BannerType(DjangoObjectType):
     class Meta:
         model = models.Banner
@@ -361,6 +361,37 @@ class ApproveOrder(graphene.Mutation):
             order=order,approval=order.approval
         )
 
+class FileUpload(graphene.Mutation):
+    name = graphene.String()
+    description = graphene.String()
+    document =  Upload()
+
+    class Arguments:
+        name = graphene.String()
+        description = graphene.String()
+        document =  Upload()
+    
+    def mutate(self,info,file,**kwargs):
+        name = kwargs.get('name')
+        description = kwargs.get('description')
+        document = info.context.FILES.get(file)
+
+        newfile = models.File(
+            name = name,
+            description = description,
+            document = document,
+        ) 
+
+        newfile.save()
+
+        return FileUpload(
+            name = newfile.name,
+            description = newfile.description,
+            document = newfile.document,
+        )
+
+
+
 class Mutation(graphene.ObjectType):
     create_component = CreateComponent.Field()
     create_device = CreateDevice.Field()
@@ -375,3 +406,4 @@ class Mutation(graphene.ObjectType):
     approve_order = ApproveOrder.Field()
     add_banner_wishlist=AddBannerWishlist.Field()
     device_search = DeviceSearch.Field()    
+    file_upload = FileUpload.Field()
