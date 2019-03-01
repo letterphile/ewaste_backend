@@ -364,12 +364,12 @@ class ApproveOrder(graphene.Mutation):
 class FileUpload(graphene.Mutation):
     name = graphene.String()
     description = graphene.String()
-    document =  Upload()
+    document =  Upload(required=True)
 
     class Arguments:
         name = graphene.String()
         description = graphene.String()
-        document =  Upload()
+        document =  Upload(required=True)
     
     def mutate(self,info,file,**kwargs):
         name = kwargs.get('name')
@@ -390,7 +390,17 @@ class FileUpload(graphene.Mutation):
             document = newfile.document,
         )
 
+class UploadFileMutation(graphene.ClientIDMutation):
+        class Input:
+            
+            # nothing needed for uploading file
+     
+         # your return fields
 
+        @classmethod
+        def mutate_and_get_payload(cls, input, context, info):
+            files = context.FILES
+            print(files)
 
 class Mutation(graphene.ObjectType):
     create_component = CreateComponent.Field()
