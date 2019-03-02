@@ -143,10 +143,10 @@ class CreateCustomUser(graphene.Mutation):
         email = graphene.String(required=True)
         usertype = graphene.String(required=True)
         
-    def mutate(self,info,username,password,email,usertype):
+    def mutate(self,info,username,password,email,usertype,firstname,lastname):
         customuser = models.CustomUser(username=username,password=password,email=email,usertype=usertype,first_name=firstname,last_name=lastname)
         customuser.save()
-        customuser.name = first_name+" "+last_name
+        customuser.name = customuser.first_name+" "+customuser.last_name
         customuser.save()
         return CreateCustomUser(customuser)
 
@@ -356,12 +356,11 @@ class CreateBanner(graphene.Mutation):
     seller = graphene.Field(CustomUserType)
     banner = graphene.Field(BannerType)
     class Arguments:
-        seller = CustomUserInput(required=True) 
-        device = DeviceInput(required=True)
+        id = graphene.Int(required=True)
         price = graphene.Int(required=True)
-    def mutate(self,info,seller,device,price):
-        device = models.Device.objects.get(id=device.id)
-        seller = models.CustomUser.objects.get(username=seller.username)
+    def mutate(self,info,id,price):
+        seller = info.context.user 
+        device = models.Device.objects.get(id=id)
         if not device.sellers.all().filter(id=seller.id).exists():
             raise Exception("Seller is not and Authorized device seller")
         banner = models.Banner(seller =seller,device=device,price=price)
