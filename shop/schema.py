@@ -170,6 +170,12 @@ class CreateDevice(graphene.Mutation):
     name=graphene.String()
     manufacturer = graphene.Field(CustomUserType)
     model_number = graphene.Int()
+    version = graphene.String(required=True)
+    hw_specification = graphene.String(required=True)
+    sw_specification = graphene.String(required=True)
+    support_notes = graphene.String(required=True)
+
+
     class Arguments:
         name=graphene.String()
         model_number=graphene.Int()
@@ -193,6 +199,10 @@ class CreateDevice(graphene.Mutation):
             id=device.id,
             name=device.name,
             manufacturer=current_user
+            version = device.specification.version 
+            hw_specification = device.specification.hw_specification
+            sw_specification = device.specification.sw_specification
+            support_notes = device.specification.support_notes
         )
 
 class AddComponent(graphene.Mutation):
