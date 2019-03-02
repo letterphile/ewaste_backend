@@ -92,7 +92,7 @@ class Component(models.Model):
     name = models.CharField(max_length=50)
     specification =  models.ForeignKey(Specification,on_delete=models.SET_NULL,null=True)
     added = models.DateTimeField(auto_now_add=True)
-    model_number = models.PositiveIntegerField()
+    model_number = models.CharField(max_length=30)
     class Meta:
         ordering = ('id',)
     def __str__(self):
