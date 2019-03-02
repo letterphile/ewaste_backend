@@ -220,11 +220,10 @@ class AddBannerCart(graphene.Mutation):
     buyer = graphene.Field(CustomUserType)
     banners = graphene.List(BannerType)
     class Arguments:
-        buyer= CustomUserInput(required=True)
-        banner = BannerInput(required=True)
-    def mutate(self,info,buyer,banner):
-        buyer= models.CustomUser.objects.get(username=buyer.username)
-        banner = models.Banner.objects.get(id=banner.id)
+        pass 
+    def mutate(self,info):
+        buyer= info.context.user
+        banner = models.Banner.objects.get(buyer=user)
         try :
             cart = models.Cart.objects.get(buyer=buyer)
         except ObjectDoesNotExist:
