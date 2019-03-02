@@ -53,6 +53,7 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
+
 class Specification(models.Model):
     version = models.CharField(max_length=10)
     hw_specification = models.TextField()

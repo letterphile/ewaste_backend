@@ -39,6 +39,7 @@ class Query(graphene.AbstractType):
     all_order= graphene.List(OrderType)
     all_banner=graphene.List(BannerType)
     all_wishlist=graphene.List(WishlistType)
+    specification = graphene.Field(SpecificationType)
     me = graphene.Field(CustomUserType)
     wishlist = graphene.Field(WishlistType)
     all_specification = graphene.List(SpecificationType)
@@ -71,6 +72,10 @@ class Query(graphene.AbstractType):
     def resolve_component(self,info,**kwargs):
         id = kwargs.get('id')
         return models.Component.objects.get(id=id)
+    def resolve_specification(self,info,**kwargs):
+        id = kwargs.get('id')
+        return models.Specification.objects.get(id=id)
+
     def resolve_manufacturer(self,info,**kwargs):
         id = kwargs.get('id')
         manufacturer = models.CustomUser.objects.get(id=id)
@@ -127,26 +132,6 @@ class DeviceSearch(graphene.Mutation):
         return DeviceSearch(
             devices = results
         )
-class CreateDevice(graphene.Mutation):
-    id = graphene.Int()
-    name=graphene.String()
-    manufacturer = graphene.Field(CustomUserType)
-    model_number = graphene.Int()
-    class Arguments:
-        name=graphene.String()
-        model_number=graphene.Int()
-    def mutate(self,info,name,model_number):
-        current_user = info.context.user
-        if current_user.is_anonymous:
-            raise Exception("Not Logged in")
-        
-        device = models.Device(name=name,manufacturer=current_user,model_number=model_number)
-        device.save()
-        return CreateDevice(
-            id=device.id,
-            name=device.name,
-            manufacturer=current_user
-        )
 class CreateCustomUser(graphene.Mutation):
     customuser = graphene.Field(CustomUserType)
 
@@ -161,10 +146,14 @@ class CreateCustomUser(graphene.Mutation):
     def mutate(self,info,username,password,email,usertype):
         customuser = models.CustomUser(username=username,password=password,email=email,usertype=usertype,first_name=firstname,last_name=lastname)
         customuser.save()
+        customuser.name = first_name+" "+last_name
+        customuser.save()
         return CreateCustomUser(customuser)
 
 
-#InputTypes
+#Types
+class SpecificationInput(graphene.InputObjectType):
+    id = graphene.Int()
 class DeviceInput(graphene.InputObjectType):
     id = graphene.Int()
 class CustomUserInput(graphene.InputObjectType):
@@ -176,6 +165,35 @@ class BannerInput(graphene.InputObjectType):
 class OrderInput(graphene.InputObjectType):
     id = graphene.Int()
 
+class CreateDevice(graphene.Mutation):
+    id = graphene.Int()
+    name=graphene.String()
+    manufacturer = graphene.Field(CustomUserType)
+    model_number = graphene.Int()
+    class Arguments:
+        name=graphene.String()
+        model_number=graphene.Int()
+        version = graphene.String(required=True)
+        hw_specification = graphene.String(required=True)
+        sw_specification = graphene.String(required=True)
+        support_notes = graphene.String(required=True)
+
+    def mutate(self,info,name,model_number,version,hw_specification,sw_specification,support_notes):
+        current_user = info.context.user
+        if current_user.is_anonymous:
+            raise Exception("Not Logged in")
+        
+        device = models.Device(name=name,manufacturer=current_user,model_number=model_number)
+        device.save()
+        specification = models.Specification.objects.create(version=version,hw_specification=hw_specification,sw_specification=sw_specification)
+        device.specification = specification
+        device.save()
+
+        return CreateDevice(
+            id=device.id,
+            name=device.name,
+            manufacturer=current_user
+        )
 
 class AddComponent(graphene.Mutation):
     customuser = graphene.Field(CustomUserType)
