@@ -13,6 +13,14 @@ class DeviceType(DjangoObjectType):
 class SpecificationType(DjangoObjectType):
     class Meta:
         model = models.Specification
+class AddressOneType(DjangoObjectType):
+    class Meta:
+        model = models.AddressOne
+
+class AddressTwoType(DjangoObjectType):
+    class Meta:
+        model = models.AddressTwo
+
 class ComponentType(DjangoObjectType):
     class Meta:
         model = models.Component
@@ -104,19 +112,25 @@ class Query(graphene.AbstractType):
 class CreateComponent(graphene.Mutation):
     id = graphene.Int()
     name= graphene.String()
-    specs = graphene.String()
-
+    specification = graphene.Field(SpecificationType) 
     class Arguments:
         name=graphene.String()
-        specs = graphene.String()
-
-    def mutate(self,info,name,specs):
-        component=models.Component(name=name,specs=specs)
+        version = graphene.String(max_length=10)
+        hw_specification = graphene.String()
+        sw_specification = graphene.String()
+        support_notes = graphene.String()
+    def mutate(self,info,name,version,hw_specification,sw_specification):
+        component=models.Component(name=name)
         component.save()
+        specification = models.Specification.objects.create(version=version,hw_specification=hw_specification,
+        sw_specification=sw_specification)
+        component.specification = specification
+        component.save()
+        )
         return CreateComponent(
             id=component.id,
             name=component.name,
-            specs=component.specs
+            specification = component.specification,
         )
 class DeviceSearch(graphene.Mutation):
     devices = graphene.List(DeviceType)
@@ -144,10 +158,42 @@ class CreateCustomUser(graphene.Mutation):
         usertype = graphene.String(required=True)
         
     def mutate(self,info,username,password,email,usertype,firstname,lastname):
-        customuser = models.CustomUser(username=username,password=password,email=email,usertype=usertype,first_name=firstname,last_name=lastname)
+        customuser = models.CustomUser(username=username,email=email,usertype=usertype,first_name=firstname,last_name=lastname)
         customuser.save()
+        customuser.set_password(password)
         customuser.name = customuser.first_name+" "+customuser.last_name
         customuser.save()
+        return CreateCustomUser(customuser)
+
+class CreateAddressOne(graphene.Mutation):
+
+    address_one= graphene.Field(AddressOneType)
+
+    class Arguments:
+        name = graphene.String(required=True)
+        phone_number = graphene.Int(required=True)
+        pincode = graphene.Int(required=True)
+        locality = graphene.String(required=True)
+        address = graphene.String() 
+        city_district_town =  graphene.String()
+        state = graphene.String()
+        landmark = graphene.String()
+        address_type = graphene.String()
+
+    def mutate(self,info,name,phone_number,pincode,locality,address,city_district_town,state,landmark,address_type):
+        user = info.context.user 
+        address_one = models.AddressOne(name=name,
+        phone_number=phone_number,
+        pincode=pincode,
+        locality=locality,
+        address=address,
+        city_district_town=city_district_town,
+        state=state,
+        landmark=landmark,
+        address_type=address_type)
+        address_one.save()
+        user.address_one =address_one
+        user.save()
         return CreateCustomUser(customuser)
 
 
@@ -198,11 +244,11 @@ class CreateDevice(graphene.Mutation):
         return CreateDevice(
             id=device.id,
             name=device.name,
-            manufacturer=current_user
-            version = device.specification.version 
-            hw_specification = device.specification.hw_specification
-            sw_specification = device.specification.sw_specification
-            support_notes = device.specification.support_notes
+            manufacturer=current_user,
+            version = device.specification.version,
+            hw_specification = device.specification.hw_specification,
+            sw_specification = device.specification.sw_specification,
+            support_notes = device.specification.support_notes,
         )
 
 class AddComponent(graphene.Mutation):
@@ -210,24 +256,18 @@ class AddComponent(graphene.Mutation):
     device = graphene.Field(DeviceType)
     component = graphene.Field(ComponentType)
     class Arguments:
-        username = graphene.String(required=True)
-        device = DeviceInput(required=True)
-        component = ComponentInput(required=True) 
+        device_id = graphene.Int(required=True)
+        component_id = graphene.Int(required=True) 
 
-    def mutate(self,info,username,device,component):
+    def mutate(self,info,device_id,component_id):
         current_user = info.context.user
         if current_user.is_anonymous:
             raise Exception("Not Logged in")
-        if current_user.username != username :
-            raise Exception("Not a Valid User!!")
-        if device is not None and component is not None:
-            device_id = device.id
-            component_id = component.id
-            device = models.Device.objects.get(id=device_id)
-            component = models.Component.objects.get(id=component_id)
-            if device.manufacturer.username == current_user.username :
-               device.components.add(component) 
-               device.save()
+        device = models.Device.objects.get(id=device_id)
+        component = models.Component.objects.get(id=component_id)
+        if device.manufacturer.username == current_user.username :
+            device.components.add(component) 
+            device.save()
         
         return  AddComponent(
             customuser=current_user,
@@ -239,21 +279,17 @@ class AddDeviceSeller(graphene.Mutation):
     device = graphene.Field(DeviceType)
     class Arguments:
         username = graphene.String(required=True)
-        device = DeviceInput(required=True)
-    def mutate(self,info,username,device):
+        device_id = graphene.Int(required=True)
+    def mutate(self,info,username,device_id):
         current_user = info.context.user
         if current_user.is_anonymous:
             raise Exception("Not Logged in")
-        if current_user.username != username :
-            raise Exception("Not a Valid User!!")
-        if device is not None:
-            device_id = device.id
-            device = models.Device.objects.get(id=device_id)
-            user = models.CustomUser.objects.get(username=username)
-            if device.manufacturer.username == current_user.username :
-               device.sellers.add(user)
-               device.save()
-               sellers = device.sellers.all()
+        device = models.Device.objects.get(id=device_id)
+        user = models.CustomUser.objects.get(username=username)
+        if device.manufacturer.username == current_user.username :
+            device.sellers.add(user)
+            device.save()
+            sellers = device.sellers.all()
         return  AddDeviceSeller(
             sellers = sellers,
             device = device,

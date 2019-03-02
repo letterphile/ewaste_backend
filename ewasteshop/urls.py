@@ -20,10 +20,12 @@ from graphene_django.views import GraphQLView
 from django.conf import settings
 from django.conf.urls.static import static
 from graphene_file_upload.django import FileUploadGraphQLView
+from shop.views import model_form_upload 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     url(r'^graphql',FileUploadGraphQLView.as_view(graphiql=True)),
+    path('upload/',model_form_upload,name='model_form_upload'),
 ]
 
 if settings.DEBUG:

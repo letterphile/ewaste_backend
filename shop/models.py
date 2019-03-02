@@ -3,7 +3,26 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.urls import reverse
 # Create your models here.
-class Address(models.Model):
+class AddressOne(models.Model):
+    name = models.CharField(max_length=20)
+    phone_number = models.PositiveIntegerField()
+    pincode = models.PositiveIntegerField()
+    locality = models.TextField()
+    address = models.TextField() 
+    choices = (
+        ('CITY','City'),
+        ('DISTRICT','District'),
+        ('TOWN','Town'),
+    )
+    city_district_town =  models.CharField(max_length=50,choices=choices,default='CITY')
+    state = models.CharField(max_length=20)
+    landmark = models.CharField(max_length=50)
+    type_choices = (
+        ('HOME','Home'),
+        ('WORK','Work'),
+    )
+    address_type = models.CharField(max_length = 50,choices =type_choices,default='HOME')
+class AddressTwo(models.Model):
     name = models.CharField(max_length=20)
     phone_number = models.PositiveIntegerField()
     pincode = models.PositiveIntegerField()
@@ -23,6 +42,7 @@ class Address(models.Model):
     )
     address_type = models.CharField(max_length = 50,choices =type_choices,default='HOME')
 
+
     def __str__(self):
         return self.name
 
@@ -35,6 +55,9 @@ class File(models.Model):
     def __str__(self):
        return self.name 
 
+class Bucket(models.Model):
+    name = models.CharField(max_length=100,null=True)
+    files = models.ForeignKey(File,on_delete=models.CASCADE)
 
 class CustomUser(AbstractUser):
     choices = (
@@ -46,8 +69,8 @@ class CustomUser(AbstractUser):
     usertype = models.CharField(max_length=50,choices=choices,default='BUYER')
     user_slug = models.SlugField(max_length=25,null=True)
     name = models.CharField(max_length=100,blank=True,null=True)
-    address = models.ForeignKey(Address,on_delete=models.CASCADE,null=True)
-
+    address_one = models.OneToOneField(AddressOne,on_delete=models.SET_NULL,null=True)
+    address_two = models.OneToOneField(AddressTwo,on_delete=models.SET_NULL,null=True)
     def get_absolute_url(self):
         return reverse('view_user', kwargs={'username': self.username})
 
