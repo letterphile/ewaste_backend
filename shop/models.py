@@ -71,6 +71,7 @@ class CustomUser(AbstractUser):
     name = models.CharField(max_length=100,blank=True,null=True)
     address_one = models.OneToOneField(AddressOne,on_delete=models.SET_NULL,null=True)
     address_two = models.OneToOneField(AddressTwo,on_delete=models.SET_NULL,null=True)
+     
     def get_absolute_url(self):
         return reverse('view_user', kwargs={'username': self.username})
 

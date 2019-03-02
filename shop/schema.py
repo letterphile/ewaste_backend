@@ -56,6 +56,18 @@ class Query(graphene.AbstractType):
     order = graphene.Field(OrderType,id=graphene.Int())
     component = graphene.Field(ComponentType,id=graphene.Int())
     manufacturer = graphene.List(DeviceType,id=graphene.Int())
+    address_one = graphene.Field(AddressOneType)
+    address_two = graphene.Field(AddressTwoType)
+    
+    def resolve_address_one(self,info,**kwargs):
+        user = info.context.user
+        address_one = user.address_one
+        return address_one
+
+    def resolve_address_two(self,info,**kwargs):
+        user = info.context.user
+        address_two= user.address_two
+        return address_two
 
     def resolve_all_wishlist(self,info,**kwargs):
         return models.Wishlist.objects.all() 
@@ -115,7 +127,7 @@ class CreateComponent(graphene.Mutation):
     specification = graphene.Field(SpecificationType) 
     class Arguments:
         name=graphene.String()
-        version = graphene.String(max_length=10)
+        version = graphene.String()
         hw_specification = graphene.String()
         sw_specification = graphene.String()
         support_notes = graphene.String()
@@ -126,7 +138,6 @@ class CreateComponent(graphene.Mutation):
         sw_specification=sw_specification)
         component.specification = specification
         component.save()
-        )
         return CreateComponent(
             id=component.id,
             name=component.name,
@@ -164,6 +175,79 @@ class CreateCustomUser(graphene.Mutation):
         customuser.name = customuser.first_name+" "+customuser.last_name
         customuser.save()
         return CreateCustomUser(customuser)
+class ProfileUpdate(graphene.Mutation):
+    customuser = graphene.Field(CustomUserType)
+
+    class Arguments:
+        username= graphene.String()
+        first_name = graphene.String()
+        last_name = graphene.String()
+        email = graphene.String()
+        usertype = graphene.String()
+        address_one = graphene.Int()
+        address_two = graphene.Int()
+
+    def mutate(self,info,**kwargs):
+        customuser = info.context.user
+        if kwargs.get('username') is not None:
+            customuser.username = kwargs.get('username')
+        if kwargs.get('first_name') is not None:
+            customuser.first_name = kwargs.get('first_name')
+        if kwargs.get('last_name') is not None:
+            customuser.last_name  = kwargs.get('last_name')
+        if kwargs.get('email') is not None:
+            customuser.email= kwargs.get('email')
+        if kwargs.get('usertype') is not None:
+            customuser.usertype= kwargs.get('usertype')
+        if kwargs.get('address_one') is not None:
+            address_one = kwargs.get('address_one')
+            address_one = models.AddressOne.get(id=address_one)
+            customuser.address_one= address_one
+        if kwargs.get('address_two') is not None:
+            address_two= kwargs.get('address_two')
+            address_two= models.AddressOne.get(id=address_two)
+            customuser.address_two= address_two
+        customuser.save()
+        return CreateCustomUser(customuser)
+
+class AddressOneUpdate(graphene.Mutation):
+    address_one = graphene.Field(AddressOneType)
+
+    class Arguments:
+        name = graphene.String()
+        phone_number = graphene.Int()
+        pincode = graphene.Int()
+        locality = graphene.String()
+        address = graphene.String() 
+        city_district_town =  graphene.String()
+        state = graphene.String()
+        landmark = graphene.String()
+        address_type = graphene.String()
+
+    def mutate(self,info,**kwargs):
+        customuser = info.context.user
+        if kwargs.get('username') is not None:
+            customuser.username = kwargs.get('username')
+        if kwargs.get('first_name') is not None:
+            customuser.first_name = kwargs.get('first_name')
+        if kwargs.get('last_name') is not None:
+            customuser.last_name  = kwargs.get('last_name')
+        if kwargs.get('email') is not None:
+            customuser.email= kwargs.get('email')
+        if kwargs.get('usertype') is not None:
+            customuser.usertype= kwargs.get('usertype')
+        if kwargs.get('address_one') is not None:
+            address_one = kwargs.get('address_one')
+            address_one = models.AddressOne.get(id=address_one)
+            customuser.address_one= address_one
+        if kwargs.get('address_two') is not None:
+            address_two= kwargs.get('address_two')
+            address_two= models.AddressOne.get(id=address_two)
+            customuser.address_two= address_two
+        customuser.save()
+        return CreateCustomUser(customuser)
+
+
 
 class CreateAddressOne(graphene.Mutation):
 
@@ -194,7 +278,39 @@ class CreateAddressOne(graphene.Mutation):
         address_one.save()
         user.address_one =address_one
         user.save()
-        return CreateCustomUser(customuser)
+        return CreateAddressOne(customuser)
+
+class CreateAddressTwo(graphene.Mutation):
+
+    address_two= graphene.Field(AddressTwoType)
+
+    class Arguments:
+        name = graphene.String(required=True)
+        phone_number = graphene.Int(required=True)
+        pincode = graphene.Int(required=True)
+        locality = graphene.String(required=True)
+        address = graphene.String() 
+        city_district_town =  graphene.String()
+        state = graphene.String()
+        landmark = graphene.String()
+        address_type = graphene.String()
+
+    def mutate(self,info,name,phone_number,pincode,locality,address,city_district_town,state,landmark,address_type):
+        user = info.context.user 
+        address_two= models.AddressTwo(name=name,
+        phone_number=phone_number,
+        pincode=pincode,
+        locality=locality,
+        address=address,
+        city_district_town=city_district_town,
+        state=state,
+        landmark=landmark,
+        address_type=address_type)
+        address_two.save()
+        user.address_two = address_two
+        user.save()
+        return CreateAddressTwo(address_two)
+
 
 
 #Types
@@ -479,3 +595,6 @@ class Mutation(graphene.ObjectType):
     add_banner_wishlist=AddBannerWishlist.Field()
     device_search = DeviceSearch.Field()    
     file_upload = FileUpload.Field()
+    profie_update = ProfileUpdate.Field()
+    create_address_one = CreateAddressOne.Field()
+    create_address_two = CreateAddressTwo.Field()
