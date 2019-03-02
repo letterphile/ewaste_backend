@@ -10,7 +10,9 @@ class BannerType(DjangoObjectType):
 class DeviceType(DjangoObjectType):
     class Meta:
         model = models.Device
-
+class SpecificationType(DjangoObjectType):
+    class Meta:
+        model = models.Specification
 class ComponentType(DjangoObjectType):
     class Meta:
         model = models.Component
@@ -26,6 +28,9 @@ class OrderType(DjangoObjectType):
 class CartType(DjangoObjectType):
     class Meta:
         model = models.Cart
+class WishlistType(DjangoObjectType):
+    class Meta:
+        model = models.Wishlist
 
 class Query(graphene.AbstractType):
     all_device= graphene.List(DeviceType)
@@ -33,19 +38,24 @@ class Query(graphene.AbstractType):
     all_cart= graphene.List(CartType) 
     all_order= graphene.List(OrderType)
     all_banner=graphene.List(BannerType)
+    all_wishlist=graphene.List(WishlistType)
     me = graphene.Field(CustomUserType)
-
+    wishlist = graphene.Field(WishlistType)
+    all_specification = graphene.List(SpecificationType)
     device = graphene.Field(DeviceType,id=graphene.Int())
     cart = graphene.Field(CartType,id=graphene.Int())
     order = graphene.Field(OrderType,id=graphene.Int())
     component = graphene.Field(ComponentType,id=graphene.Int())
     manufacturer = graphene.List(DeviceType,id=graphene.Int())
-    
+
+    def resolve_all_wishlist(self,info,**kwargs):
+        return models.Wishlist.objects.all() 
     def resolve_all_device(self,info,**kwargs):
         return models.Device.objects.all()
     def resolve_all_banner(self,info,**kwargs):
         return models.Banner.objects.all()
-    
+    def resolve_all_specification(self,info,**kwargs):
+        return models.Specification.objects.all() 
     def resolve_all_component(self,info,**kwargs):
         return models.Component.objects.all()
     def resolve_all_cart(self,info,**kwargs):
@@ -53,8 +63,11 @@ class Query(graphene.AbstractType):
     def resolve_device(self,info,**kwargs):
         id = kwargs.get('id')
         return models.Device.objects.get(id=id)
-    def resolve_all_order(self,info,**kwargs):
-        return models.Order.objects.all()
+    def resolve_wishlist(self,info,**kwargs):
+        id = kwargs.get('id')
+        return models.Wishlist.objects.get(id=id)
+
+
     def resolve_component(self,info,**kwargs):
         id = kwargs.get('id')
         return models.Component.objects.get(id=id)
@@ -81,6 +94,7 @@ class Query(graphene.AbstractType):
         if user.is_anonymous:
             raise Exception("Not Logged in")
         return user
+
 
 class CreateComponent(graphene.Mutation):
     id = graphene.Int()
@@ -220,10 +234,10 @@ class AddBannerCart(graphene.Mutation):
     buyer = graphene.Field(CustomUserType)
     banners = graphene.List(BannerType)
     class Arguments:
-        pass 
-    def mutate(self,info):
+        id = graphene.Int(required=True)
+    def mutate(self,info,id):
         buyer= info.context.user
-        banner = models.Banner.objects.get(buyer=user)
+        banner = models.Banner.objects.get(id=id)
         try :
             cart = models.Cart.objects.get(buyer=buyer)
         except ObjectDoesNotExist:
@@ -239,11 +253,10 @@ class AddBannerWishlist(graphene.Mutation):
     buyer = graphene.Field(CustomUserType)
     banners = graphene.List(BannerType)
     class Arguments:
-        buyer= CustomUserInput(required=True)
-        banner = BannerInput(required=True)
-    def mutate(self,info,buyer,banner):
-        buyer= models.CustomUser.objects.get(username=buyer.username)
-        banner = models.Banner.objects.get(id=banner.id)
+        id = graphene.Int(required=True)
+    def mutate(self,info,id):
+        buyer = info.context.user
+        banner = models.Banner.objects.get(id=id)
         try :
             wishlist= models.Wishlist.objects.get(buyer=buyer)
         except ObjectDoesNotExist:
@@ -260,12 +273,11 @@ class MoveBannerWishlist(graphene.Mutation):
     buyer = graphene.Field(CustomUserType)
     banners = graphene.List(BannerType)
     class Arguments:
-        buyer= CustomUserInput(required=True)
-        banner = BannerInput(required=True)
-    def mutate(self,info,buyer,banner):
-        buyer= models.CustomUser.objects.get(username=buyer.username)
+        banner = graphene.Int(required=True)
+    def mutate(self,info,id):
+        buyer= info.context.user
         cart = models.Cart.objects.get(buyer=buyer)
-        banner = cart.banners.get(id=banner.id) 
+        banner = cart.banners.get(id=id) 
         try :
             wishlist= models.Wishlist.objects.get(buyer=buyer)
         except ObjectDoesNotExist:
@@ -388,18 +400,6 @@ class FileUpload(graphene.Mutation):
             description = newfile.description,
             document = newfile.document,
         )
-
-class UploadFileMutation(graphene.ClientIDMutation):
-        class Input:
-            
-            # nothing needed for uploading file
-     
-         # your return fields
-
-        @classmethod
-        def mutate_and_get_payload(cls, input, context, info):
-            files = context.FILES
-            print(files)
 
 class Mutation(graphene.ObjectType):
     create_component = CreateComponent.Field()

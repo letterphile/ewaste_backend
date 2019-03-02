@@ -75,6 +75,7 @@ class Component(models.Model):
 
 class Device(models.Model):
     name = models.CharField(max_length=50)
+    specification =  models.ForeignKey(Specification,on_delete=models.SET_NULL,null=True)
     components = models.ManyToManyField(Component,related_name='components')
     manufacturer = models.ForeignKey(CustomUser,related_name='device_manufacturer',on_delete=models.SET_NULL,null=True)
     sellers = models.ManyToManyField(CustomUser,related_name='sellers')
