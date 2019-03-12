@@ -28,12 +28,8 @@ def model_form_upload(request):
         if form.is_valid():
             model_instance = form.save(commit=False)
             model_instance.save()
-            bucket = Bucket(files=model_instance)
-            bucket.save()
-            bucket.name="some_name"
-            bucket.save()
-            response_data['bucket_id'] = bucket.id
             response_data['message'] = "file upload successful"
+            response_data["id"] = model_instance.id
         else:
             response_data['message'] = 'Some error message'
 

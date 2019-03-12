@@ -1,11 +1,11 @@
 import graphene
 from django.core.exceptions import ObjectDoesNotExist
 from graphene_django.types import DjangoObjectType
-from django.contrib.postgres.search import TrigramSimilarity
 from . import models
-from graphene_file_upload.scalars import Upload
-
-
+from django.contrib.postgres.search import SearchVector,SearchQuery
+class ManufacturerType(DjangoObjectType):
+    class Meta:
+        model = models.Manufacturer
 class BannerType(DjangoObjectType):
     class Meta:
         model = models.Banner
@@ -49,8 +49,10 @@ class Query(graphene.AbstractType):
     all_order= graphene.List(OrderType)
     all_banner=graphene.List(BannerType)
     all_wishlist=graphene.List(WishlistType)
-    all_customuser  = graphene.List(CustomUserType) 
+    all_customuser  = graphene.List(CustomUserType)
+    all_manufacturer = graphene.List(ManufacturerType) 
     specification = graphene.Field(SpecificationType)
+    my_address = graphene.Field(AddressOneType)
     me = graphene.Field(CustomUserType)
     manufacturedbyme= graphene.List(DeviceType)
     wishlist = graphene.Field(WishlistType)
@@ -59,9 +61,31 @@ class Query(graphene.AbstractType):
     cart = graphene.Field(CartType,id=graphene.Int())
     order = graphene.Field(OrderType,id=graphene.Int())
     component = graphene.Field(ComponentType,id=graphene.Int())
-    manufacturer = graphene.List(DeviceType,id=graphene.Int())
+    my_devices= graphene.List(DeviceType)
+    my_components = graphene.List(ComponentType) 
     address_one = graphene.Field(AddressOneType)
     address_two = graphene.Field(AddressTwoType)
+    rahul_add = graphene.String()
+    def resolve_rahul_add(self,info,**kwargs):
+        user = info.context.user
+        address = user.address_one
+        string_address = address.address
+        return (string_address) 
+    def resolve_my_address(self,info,**kwargs):
+        user = info.context.user
+        address = user.address
+        return address 
+    def resolve_my_devices(self,info,**kwargs):
+        user = info.context.user
+        devices = user.device_set.all()
+        return devices
+    
+    def resolve_my_components(self,info,**kwargs):
+        user = info.context.user
+        components = user.component_set.all()
+
+        return  components
+
     
     def resolve_address_one(self,info,**kwargs):
         user = info.context.user
@@ -78,7 +102,6 @@ class Query(graphene.AbstractType):
         user = info.context.user
         address_two= user.address_two
         return address_two
-
     def resolve_all_wishlist(self,info,**kwargs):
         return models.Wishlist.objects.all() 
     def resolve_all_device(self,info,**kwargs):
@@ -97,6 +120,9 @@ class Query(graphene.AbstractType):
     def resolve_wishlist(self,info,**kwargs):
         id = kwargs.get('id')
         return models.Wishlist.objects.get(id=id)
+
+    def resolve_all_manufacturer(self,info,**kwargs):
+        return models.Manufacturer.objects.all()
 
 
     def resolve_component(self,info,**kwargs):
@@ -119,16 +145,113 @@ class Query(graphene.AbstractType):
         id = kwargs.get('id')
         return models.Order.objects.get(id=id)
 
-    def resolve_order(self,info,**kwargs):
-        id = kwargs.get('id')
-        return models.Banner.objects.get(id=id)
-
-
     def resolve_me(self,info):
         user = info.context.user
         if user.is_anonymous:
             raise Exception("Not Logged in")
         return user
+
+class UpdateDevice(graphene.Mutation):
+    id = graphene.Int()
+    name= graphene.String()
+    specification = graphene.Field(SpecificationType) 
+    class Arguments:
+        id  = graphene.Int()
+        name=graphene.String()
+        version = graphene.String()
+        hw_specification = graphene.String()
+        sw_specification = graphene.String()
+        support_notes = graphene.String()
+        manufacturer_name = graphene.String() 
+    def mutate(self,info,id,**kwargs):
+        device = models.Device.objects.get(id=id)
+        specification = device.specification 
+        if kwargs.get('name') is not None :
+           device.name = kwargs.get('name')
+        if kwargs.get('version') is not None :
+           specification.version= kwargs.get('version')
+        if kwargs.get('hw_specification') is not None :
+           specification.hw_specification= kwargs.get('hw_specification')
+        if kwargs.get('sw_specification') is not None :
+           specification.sw_specification= kwargs.get('sw_specification')
+        if kwargs.get('support') is not None :
+           specification.support= kwargs.get('support')
+        device= device.save()
+        specification =specification.save()        
+
+        return UpdateDevice(
+            id=device.id,
+            name=device.name,
+            specification = device.specification,
+        )
+
+class DeleteDevice(graphene.Mutation):
+    id = graphene.Int()
+    name= graphene.String()
+    class Arguments:
+        id = graphene.Int(required=True)
+
+    def mutate(self,info,id,**kwargs):
+        device = models.Device.objects.get(id=id)
+        name = device.name 
+        device.delete()
+
+        return DeleteDevice(
+            id,name
+        )
+
+
+
+
+class UpdateComponent(graphene.Mutation):
+    id = graphene.Int()
+    name= graphene.String()
+    specification = graphene.Field(SpecificationType) 
+    class Arguments:
+        id  = graphene.Int()
+        name=graphene.String()
+        version = graphene.String()
+        hw_specification = graphene.String()
+        sw_specification = graphene.String()
+        support_notes = graphene.String()
+        manufacturer_name = graphene.String() 
+    def mutate(self,info,id,**kwargs):
+        component = models.Component.objects.get(id=id)
+        specification = component.specification 
+        if kwargs.get('name') is not None :
+            component.name = kwargs.get('name')
+        if kwargs.get('version') is not None :
+        
+           specification.version= kwargs.get('version')
+        if kwargs.get('hw_specification') is not None :
+           specification.hw_specification= kwargs.get('hw_specification')
+        if kwargs.get('sw_specification') is not None :
+           specification.sw_specification= kwargs.get('sw_specification')
+        if kwargs.get('support') is not None :
+           specification.support= kwargs.get('support')
+        component = component.save()
+        specification =specification.save()        
+
+        return UpdateComponent(
+            id=component.id,
+            name=component.name,
+            specification = component.specification,
+        )
+
+class DeleteComponent(graphene.Mutation):
+    id = graphene.Int()
+    name= graphene.String()
+    class Arguments:
+        id = graphene.Int(required=True)
+
+    def mutate(self,info,id,**kwargs):
+        component = models.Component.objects.get(id=id)
+        name = component.name 
+        component.delete()
+
+        return DeleteComponent(
+            id,name
+        )
 
 
 class CreateComponent(graphene.Mutation):
@@ -141,12 +264,19 @@ class CreateComponent(graphene.Mutation):
         hw_specification = graphene.String()
         sw_specification = graphene.String()
         support_notes = graphene.String()
-    def mutate(self,info,name,version,hw_specification,sw_specification):
+        manufacturer_name = graphene.String() 
+    def mutate(self,info,name,version,hw_specification,sw_specification,manufacturer_name,support_notes):
         component=models.Component(name=name)
-        component.save()
+        try:
+            manufacturer = models.Manufacturer.objects.get(name=manufacturer_name) 
+        except ObjectDoesNotExist:
+            manufacturer  = models.Manufacturer.objects.create(name=manufacturer_name)
         specification = models.Specification.objects.create(version=version,hw_specification=hw_specification,
-        sw_specification=sw_specification)
+        sw_specification=sw_specification,support_notes=support_notes)
         component.specification = specification
+        component.manufacturer = manufacturer
+        component.save()
+        component.sellers.add(info.context.user)
         component.save()
         return CreateComponent(
             id=component.id,
@@ -160,13 +290,25 @@ class DeviceSearch(graphene.Mutation):
         query = graphene.String(required=True)
 
     def mutate(self,info,query):
-        results = models.Device.objects.annotate(
-        similarity=TrigramSimilarity('name',query),
-        ).filter(similarity__gt=0.0).order_by('-similarity')
-        print(results)
+       
+        results = models.Device.objects.annotate(search=SearchVector('description'),).filter(search=SearchQuery(query))
         return DeviceSearch(
             devices = results
         )
+
+class ComponentSearch(graphene.Mutation):
+    components = graphene.List(ComponentType)
+
+    class Arguments:
+        query = graphene.String(required=True)
+
+    def mutate(self,info,query):
+       
+        results = models.Component.objects.annotate(search=SearchVector('description'),).filter(search=SearchQuery(query))
+        return ComponentSearch(
+            components= results
+        )
+
 class CreateCustomUser(graphene.Mutation):
     customuser = graphene.Field(CustomUserType)
 
@@ -176,25 +318,19 @@ class CreateCustomUser(graphene.Mutation):
         username = graphene.String(required=True)
         password = graphene.String(required=True)
         email = graphene.String(required=True)
-        usertype = graphene.String(required=True)
+        #usertype = graphene.String(required=True)
+        phone_number = graphene.String() 
+    def mutate(self,info,username,password,email,firstname,lastname,**kwargs):
+        customuser = models.CustomUser(username=username,email=email,first_name=firstname,last_name=lastname)
         
-    def mutate(self,info,username,password,email,usertype,firstname,lastname):
-        customuser = models.CustomUser(username=username,email=email,usertype=usertype,first_name=firstname,last_name=lastname)
+        if kwargs.get('phone_number') is not None:
+            customuser.phone_number = kwargs.get('phone_number')
         customuser.save()
         customuser.set_password(password)
         customuser.name = customuser.first_name+" "+customuser.last_name
         customuser.save()
         return CreateCustomUser(customuser)
 
-class ManufacturedByMe(graphene.Mutation):
-    devices = graphene.List(DeviceType)
-    class Arguments:
-        pass
-    def mutate(self,info,**kwargs):
-        user=info.context.user
-        devices = models.Device.objects.filter(manufacturer=user)
-
-        return devices
 
 class ProfileUpdate(graphene.Mutation):
     customuser = graphene.Field(CustomUserType)
@@ -204,6 +340,7 @@ class ProfileUpdate(graphene.Mutation):
         first_name = graphene.String()
         last_name = graphene.String()
         email = graphene.String()
+        phone_number = graphene.String()
 
     def mutate(self,info,**kwargs):
         customuser = info.context.user
@@ -217,6 +354,10 @@ class ProfileUpdate(graphene.Mutation):
             customuser.email= kwargs.get('email')
         if kwargs.get('usertype') is not None:
             customuser.usertype= kwargs.get('usertype')
+        if kwargs.get('phone_number') is not None:
+            customuser.phone_number= kwargs.get('phone_number')
+
+        customuser.name = customuser.first_name + " "+customuser.last_name
         customuser.save()
         return CreateCustomUser(customuser)
 
@@ -225,8 +366,8 @@ class AddressOneUpdate(graphene.Mutation):
 
     class Arguments:
         name = graphene.String()
-        phone_number = graphene.Int()
-        pincode = graphene.Int()
+        phone_number = graphene.String()
+        pincode = graphene.String()
         locality = graphene.String()
         address = graphene.String() 
         city_district_town =  graphene.String()
@@ -264,8 +405,8 @@ class AddressTwoUpdate(graphene.Mutation):
 
     class Arguments:
         name = graphene.String()
-        phone_number = graphene.Int()
-        pincode = graphene.Int()
+        phone_number = graphene.String()
+        pincode = graphene.String()
         locality = graphene.String()
         address = graphene.String() 
         city_district_town =  graphene.String()
@@ -306,8 +447,8 @@ class CreateAddressOne(graphene.Mutation):
 
     class Arguments:
         name = graphene.String(required=True)
-        phone_number = graphene.Int(required=True)
-        pincode = graphene.Int(required=True)
+        phone_number = graphene.String(required=True)
+        pincode = graphene.String(required=True)
         locality = graphene.String(required=True)
         address = graphene.String() 
         city_district_town =  graphene.String()
@@ -329,7 +470,7 @@ class CreateAddressOne(graphene.Mutation):
         address_one.save()
         user.address_one =address_one
         user.save()
-        return CreateAddressOne(customuser)
+        return CreateAddressOne(address_one)
 
 class CreateAddressTwo(graphene.Mutation):
 
@@ -337,8 +478,8 @@ class CreateAddressTwo(graphene.Mutation):
 
     class Arguments:
         name = graphene.String(required=True)
-        phone_number = graphene.Int(required=True)
-        pincode = graphene.Int(required=True)
+        phone_number = graphene.String(required=True)
+        pincode = graphene.String(required=True)
         locality = graphene.String(required=True)
         address = graphene.String() 
         city_district_town =  graphene.String()
@@ -377,47 +518,89 @@ class BannerInput(graphene.InputObjectType):
     id = graphene.Int()
 class OrderInput(graphene.InputObjectType):
     id = graphene.Int()
-
+class DeviceImage(graphene.Mutation):
+    id = graphene.Int()
+    path= graphene.String()
+    class Arguments:
+        id = graphene.Int()
+    def mutate(self,info,id,**kwargs):
+        device = models.Device.objects.get(id=id)
+        file =device.file.document.path
+        return DeviceImage(
+            id= device.file.id,
+            path= file
+        )
 class CreateDevice(graphene.Mutation):
     id = graphene.Int()
     name=graphene.String()
-    manufacturer = graphene.Field(CustomUserType)
-    model_number = graphene.Int()
-    version = graphene.String(required=True)
-    hw_specification = graphene.String(required=True)
-    sw_specification = graphene.String(required=True)
-    support_notes = graphene.String(required=True)
-
-
+    reuse_method= graphene.String()
+    model_number = graphene.String()
+    version = graphene.String()
+    hw_specification = graphene.String()
+    sw_specification = graphene.String()
+    support_notes = graphene.String()
+    manufacturer = graphene.Field(ManufacturerType) 
+    price  = graphene.String()
     class Arguments:
+        document= graphene.Int()
+        reuse_method= graphene.String()
         name=graphene.String()
-        model_number=graphene.Int()
+        model_number=graphene.String()
         version = graphene.String(required=True)
         hw_specification = graphene.String(required=True)
         sw_specification = graphene.String(required=True)
         support_notes = graphene.String(required=True)
-
-    def mutate(self,info,name,model_number,version,hw_specification,sw_specification,support_notes):
+        manufacturer_name= graphene.String(required=True)
+    def mutate(self,info,name,reuse_method,model_number,version,manufacturer_name,hw_specification,sw_specification,support_notes,document):
+        print(document) 
         current_user = info.context.user
         if current_user.is_anonymous:
             raise Exception("Not Logged in")
-        
-        device = models.Device(name=name,manufacturer=current_user,model_number=model_number)
+        try:
+            manufacturer = models.Manufacturer.objects.get(name=manufacturer_name) 
+        except ObjectDoesNotExist:
+            manufacturer  = models.Manufacturer.objects.create(name=manufacturer_name)
+
+        device = models.Device(name=name,model_number=model_number,manufacturer=manufacturer,reuse_method=reuse_method)
         device.save()
         specification = models.Specification.objects.create(version=version,hw_specification=hw_specification,sw_specification=sw_specification)
         device.specification = specification
-        device.save()
+        device.file = models.File.objects.get(id=document)
 
+        device.save() 
+        description = "{} {} {} {} {} {}".format(
+        device.name,
+        device.model_number,
+        device.manufacturer,
+        device.specification.hw_specification,
+        device.specification.sw_specification,
+        device.specification.version,
+        )
+ 
+        device.specification = specification
+        device.description = description
+        device.save()
+        device.sellers.add(current_user)
+        device.save()
         return CreateDevice(
             id=device.id,
             name=device.name,
-            manufacturer=current_user,
             version = device.specification.version,
             hw_specification = device.specification.hw_specification,
             sw_specification = device.specification.sw_specification,
             support_notes = device.specification.support_notes,
+            reuse_method=device.reuse_method,
+            manufacturer =device.manufacturer,
+            price = device.price
         )
-
+class CreateManufacturer(graphene.Mutation):
+    manufacturer = graphene.Field(ManufacturerType)
+    class Arguments:
+        name = graphene.String(required=True)
+        description = graphene.String(required=True)
+    def mutate(self,info,name,description):
+        manufacturer = models.Manufacturer.objects.create(name=name,description=description)
+        return CreateManufacturer(manufacturer)
 class AddComponent(graphene.Mutation):
     customuser = graphene.Field(CustomUserType)
     device = graphene.Field(DeviceType)
@@ -461,71 +644,213 @@ class AddDeviceSeller(graphene.Mutation):
             sellers = sellers,
             device = device,
         )
-class AddBannerCart(graphene.Mutation):
+class AddDeviceCart(graphene.Mutation):
     buyer = graphene.Field(CustomUserType)
-    banners = graphene.List(BannerType)
+    devices = graphene.List(DeviceType)
     class Arguments:
         id = graphene.Int(required=True)
     def mutate(self,info,id):
         buyer= info.context.user
-        banner = models.Banner.objects.get(id=id)
+        device = models.Device.objects.get(id=id)
         try :
             cart = models.Cart.objects.get(buyer=buyer)
         except ObjectDoesNotExist:
             cart = models.Cart.objects.create(buyer=buyer)
-        cart.banners.add(banner)
+        cart.devices.add(device)
         cart.save()
-        banners=cart.banners.all()
-        return  AddBannerCart(
+        devices=cart.devices.all()
+        return  AddDeviceCart(
             buyer=buyer,
-            banners=banners
+            devices=devices
         )
-class AddBannerWishlist(graphene.Mutation):
+class AddDeviceCartQuantity(graphene.Mutation):
     buyer = graphene.Field(CustomUserType)
-    banners = graphene.List(BannerType)
+    device = graphene.Field(DeviceType)
+    quantity = graphene.Int()
+    class Arguments:
+        id = graphene.Int(required=True)
+        quantity = graphene.Int(required=True)
+    def mutate(self,info,id,quantity):
+        buyer= info.context.user
+        device = models.Device.objects.get(id=id)
+        try :
+            cart = models.Cart.objects.get(buyer=buyer)
+        except ObjectDoesNotExist:
+            cart = models.Cart.objects.create(buyer=buyer)
+        cart.devices.add(device)
+        cart.save()
+        try :
+            cart_to_device = models.CartToDevice.objects.get(cart=cart,device=device)
+        except ObjectDoesNotExist:
+            print('iam creating a cart_to_device')
+            cart_to_device  = models.CartToDevice.objects.create(cart=cart,device=device,quantity=quantity)
+        cart_to_device.quantity =quantity
+        cart_to_device.save() 
+        return  AddDeviceCartQuantity(
+            buyer=cart_to_device.cart.buyer,
+            device=cart_to_device.device,
+            quantity=cart_to_device.quantity,
+        )
+'''
+class AddComponentCartQuantity(graphene.Mutation):
+    buyer = graphene.Field(CustomUserType)
+    component= graphene.Field(ComponentType)
+    quantity = graphene.Int()
+    class Arguments:
+        id = graphene.Int(required=True)
+        quantity = graphene.Int(required=True)
+    def mutate(self,info,id,quantity):
+        buyer= info.context.user
+        component = models.Component.objects.get(id=id)
+        try :
+            cart = models.Cart.objects.get(buyer=buyer)
+        except ObjectDoesNotExist:
+            cart = models.Cart.objects.create(buyer=buyer)
+        cart.components.add(device)
+        cart.save()
+        try :
+            cart_to_device = models.CartToComponent.objects.get(cart=cart,device=device)
+        except ObjectDoesNotExist:
+            print('iam creating a cart_to_device')
+            cart_to_device  = models.CartToDevice.objects.create(cart=cart,device=device,quantity=quantity)
+        cart_to_device.quantity =quantity
+        cart_to_device.save() 
+        return  AddDeviceCartQuantity(
+            buyer=cart_to_device.cart.buyer,
+            device=cart_to_device.device,
+            quantity=cart_to_device.quantity,
+        )
+
+
+'''
+
+class AddComponentCart(graphene.Mutation):
+    buyer = graphene.Field(CustomUserType)
+    components = graphene.List(ComponentType)
+    class Arguments:
+        id = graphene.Int(required=True)
+    def mutate(self,info,id):
+        buyer= info.context.user
+        component = models.Component.objects.get(id=id)
+        try :
+            cart = models.Cart.objects.get(buyer=buyer)
+        except ObjectDoesNotExist:
+            cart = models.Cart.objects.create(buyer=buyer)
+        cart.components.add(component)
+        cart.save()
+        components=cart.devices.all()
+        return  AddDeviceCart(
+            buyer=buyer,
+            componenets=components
+        )
+class AddDeviceWishlist(graphene.Mutation):
+    buyer = graphene.Field(CustomUserType)
+    devices = graphene.List(DeviceType)
     class Arguments:
         id = graphene.Int(required=True)
     def mutate(self,info,id):
         buyer = info.context.user
-        banner = models.Banner.objects.get(id=id)
+        device = models.Device.objects.get(id=id)
         try :
             wishlist= models.Wishlist.objects.get(buyer=buyer)
         except ObjectDoesNotExist:
             wishlist = models.Wishlist.objects.create(buyer=buyer)
-        wishlist.banners.add(banner)
+        wishlist.devices.add(device)
         wishlist.save()
-        banners=wishlist.banners.all()
-        return  AddBannerWishlist(
+        devices=wishlist.devices.all()
+        return  AddDeviceWishlist(
             buyer=buyer,
-            banners=banners
+            devices=devices
+        )
+class AddComponentWishlist(graphene.Mutation):
+    buyer = graphene.Field(CustomUserType)
+    components = graphene.List(ComponentType)
+    class Arguments:
+        id = graphene.Int(required=True)
+    def mutate(self,info,id):
+        buyer = info.context.user
+        component = models.Component.objects.get(id=id)
+        try :
+            wishlist= models.Wishlist.objects.get(buyer=buyer)
+        except ObjectDoesNotExist:
+            wishlist = models.Wishlist.objects.create(buyer=buyer)
+        wishlist.components.add(component)
+        wishlist.save()
+        components=wishlist.components.all()
+        return  AddComponentWishlist(
+            buyer=buyer,
+            components=components
         )
 
-class MoveBannerWishlist(graphene.Mutation):
+
+class MoveDeviceWishlist(graphene.Mutation):
     buyer = graphene.Field(CustomUserType)
-    banners = graphene.List(BannerType)
+    devices = graphene.List(DeviceType)
     class Arguments:
-        banner = graphene.Int(required=True)
+        device= graphene.Int(required=True)
     def mutate(self,info,id):
         buyer= info.context.user
         cart = models.Cart.objects.get(buyer=buyer)
-        banner = cart.banners.get(id=id) 
+        device = cart.devices.get(id=id) 
         try :
             wishlist= models.Wishlist.objects.get(buyer=buyer)
         except ObjectDoesNotExist:
             wishlist = models.Wishlist.objects.create(buyer=buyer)
-        wishlist.banners.add(banner)
+        wishlist.devices.add(device)
         wishlist.save()
-        cart.banners.remove(banner)
+        cart.devices.remove(device)
         cart.save()
-        banners=wishlist.banners.all()
-        return  MoveBannerWishlist(
+        devices=wishlist.devices.all()
+        return  MoveDeviceWishlist(
             buyer=buyer,
-            banners = banners
+            devices= devices 
         )
+
+class RemoveDevice(graphene.Mutation):
+    buyer = graphene.Field(CustomUserType)
+    device = graphene.Field(DeviceType)
+    class Arguments:
+        id= graphene.Int(required=True)
+    def mutate(self,info,id):
+        buyer= info.context.user
+        cart = models.Cart.objects.get(buyer=buyer)
+        device = cart.devices.get(id=id) 
+        cart_device_quantity= models.CartToDevice.objects.get(cart=cart,device=device)
+        cart_device_quantity.delete()
+        cart.devices.remove(device)
+        cart.save()
+        return  RemoveDevice(
+            buyer=buyer,
+            device= device 
+        )
+
+class MoveComponentWishlist(graphene.Mutation):
+    buyer = graphene.Field(CustomUserType)
+    components= graphene.List(ComponentType)
+    class Arguments:
+        component= graphene.Int(required=True)
+    def mutate(self,info,id):
+        buyer= info.context.user
+        cart = models.Cart.objects.get(buyer=buyer)
+        component= cart.components.get(id=id) 
+        try :
+            wishlist= models.Wishlist.objects.get(buyer=buyer)
+        except ObjectDoesNotExist:
+            wishlist = models.Wishlist.objects.create(buyer=buyer)
+        wishlist.components.add(component)
+        wishlist.save()
+        cart.components.remove(component)
+        cart.save()
+        components=wishlist.componenets.all()
+        return  MoveComponentWishlist(
+            buyer=buyer,
+            components=components 
+        )
+
 
 class CreateOrder(graphene.Mutation):
     buyer = graphene.Field(CustomUserType)
-    banners = graphene.List(BannerType)
+    devices= graphene.List(DeviceType)
     approval = graphene.Boolean()
     class Arguments:
         buyer= CustomUserInput(required=True)
@@ -533,15 +858,15 @@ class CreateOrder(graphene.Mutation):
         buyer= models.CustomUser.objects.get(username=buyer.username)
         order = models.Order.objects.create(buyer=buyer)
         cart = models.Cart.objects.get(buyer=buyer)
-        banners = cart.banners.all()
-        for banner in banners:
-            order.banners.add(banner)
+        devices = cart.devices.all()
+        for device in devices:
+            order.devices.add(device)
             order.save()
         cart.save()
-        banners=cart.banners.all()
+        devices=cart.devices.all()
         return  CreateOrder(
             buyer=buyer,
-            banners=banners,
+            devices=devices,
             approval = order.approval
         )
 
@@ -620,50 +945,23 @@ class ApproveOrder(graphene.Mutation):
         return ApproveOrder(
             order=order,approval=order.approval
         )
-
-class FileUpload(graphene.Mutation):
-    name = graphene.String()
-    description = graphene.String()
-    document =  Upload(required=True)
-
-    class Arguments:
-        name = graphene.String()
-        description = graphene.String()
-        document =  Upload(required=True)
-    
-    def mutate(self,info,file,**kwargs):
-        name = kwargs.get('name')
-        description = kwargs.get('description')
-        document = info.context.FILES.get(file)
-
-        newfile = models.File(
-            name = name,
-            description = description,
-            document = document,
-        ) 
-
-        newfile.save()
-
-        return FileUpload(
-            name = newfile.name,
-            description = newfile.description,
-            document = newfile.document,
-        )
 class MoveToCart(graphene.ObjectType):
-    banner = graphene.Field(BannerType)
+    device = graphene.Field(DeviceType)
 
     class Arguments:
-        banner_id = graphene.Int()
+        device_id= graphene.Int()
 
-    def mutate(self,info,banner_id):
-        banner = Banner.objects.get(id=banner_id)
+    def mutate(self,info,device_id):
+        device = models.Device.objects.get(id=device_id)
         user = info.context.user
         cart = user.cart
-        cart.banners.add(banner)
+        cart.devices.add(device)
         cart.save()
         wishlist = user.wishlist
-        wishlist.remove(banner)
+        wishlist.remove(device)
         wishlist.save()
+        return (device)
+
 class Mutation(graphene.ObjectType):
     create_component = CreateComponent.Field()
     create_device = CreateDevice.Field()
@@ -672,13 +970,12 @@ class Mutation(graphene.ObjectType):
     add_component = AddComponent.Field()
     add_device_seller = AddDeviceSeller.Field()
     create_banner = CreateBanner.Field()
-    add_banner_cart = AddBannerCart.Field()
-    move_banner_wishlist = MoveBannerWishlist.Field()
+    add_device_cart= AddDeviceCart.Field()
+    move_device_wishlist= MoveDeviceWishlist.Field()
     create_order = CreateOrder.Field()
     approve_order = ApproveOrder.Field()
-    add_banner_wishlist=AddBannerWishlist.Field()
+    add_device_wishlist=AddDeviceWishlist.Field()
     device_search = DeviceSearch.Field()    
-    file_upload = FileUpload.Field()
     profile_update = ProfileUpdate.Field()
     create_address_one = CreateAddressOne.Field()
     create_address_two = CreateAddressTwo.Field()
@@ -686,3 +983,13 @@ class Mutation(graphene.ObjectType):
     address_two_update = AddressTwoUpdate.Field()
     delete_address_one = DeleteAddressOne.Field()
     delete_address_two = DeleteAddressTwo.Field()
+    create_manufacturer = CreateManufacturer.Field()
+    update_component   = UpdateComponent.Field()
+    delete_component = DeleteComponent.Field()
+    component_search = ComponentSearch.Field()
+    add_component_cart = AddComponentCart.Field()
+    add_component_wishlist = AddComponentWishlist.Field()
+    move_component_wishlist = MoveComponentWishlist.Field()
+    remove_device = RemoveDevice.Field()
+    add_device_cart_quantity=AddDeviceCartQuantity.Field()
+    device_image = DeviceImage.Field()

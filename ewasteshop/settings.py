@@ -37,8 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'shop',
     'django.contrib.postgres',
+    'shop',
     'graphene_django',
     'corsheaders',
 ]
@@ -95,7 +95,7 @@ DATABASES = {
         'NAME': 'ewasteshop',
         'USER': 'codechef',
         'PASSWORD': 'password',
-        'HOST': 'localhost',
+        'HOST': '192.168.0.17',
         'PORT': '',
     }
 }

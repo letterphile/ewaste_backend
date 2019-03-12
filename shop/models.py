@@ -5,8 +5,8 @@ from django.urls import reverse
 # Create your models here.
 class AddressOne(models.Model):
     name = models.CharField(max_length=20)
-    phone_number = models.PositiveIntegerField()
-    pincode = models.PositiveIntegerField()
+    phone_number = models.CharField(max_length=15)
+    pincode = models.CharField(max_length=10)
     locality = models.TextField()
     address = models.TextField() 
     choices = (
@@ -24,7 +24,7 @@ class AddressOne(models.Model):
     address_type = models.CharField(max_length = 50,choices =type_choices,default='HOME')
 class AddressTwo(models.Model):
     name = models.CharField(max_length=20)
-    phone_number = models.PositiveIntegerField()
+    phone_number = models.CharField(max_length=10)
     pincode = models.PositiveIntegerField()
     locality = models.TextField()
     address = models.TextField() 
@@ -55,23 +55,18 @@ class File(models.Model):
     def __str__(self):
        return self.name 
 
-class Bucket(models.Model):
-    name = models.CharField(max_length=100,null=True)
-    files = models.ForeignKey(File,on_delete=models.CASCADE)
-
 class CustomUser(AbstractUser):
     choices = (
         ('SELLER','Seller'),
         ('BUYER','Buyer'),
         ('ADMIN','Admin'),
-        ('DEVICE_MANUFACTURER','Device_Manufacturer'),
     )
     usertype = models.CharField(max_length=50,choices=choices,default='BUYER')
     user_slug = models.SlugField(max_length=25,null=True)
     name = models.CharField(max_length=100,blank=True,null=True)
     address_one = models.OneToOneField(AddressOne,on_delete=models.SET_NULL,null=True)
     address_two = models.OneToOneField(AddressTwo,on_delete=models.SET_NULL,null=True)
-     
+    phone_number = models.CharField(max_length=10,null=True)    
     def get_absolute_url(self):
         return reverse('view_user', kwargs={'username': self.username})
 
@@ -93,6 +88,9 @@ class Component(models.Model):
     specification =  models.ForeignKey(Specification,on_delete=models.SET_NULL,null=True)
     added = models.DateTimeField(auto_now_add=True)
     model_number = models.CharField(max_length=30)
+    manufacturer = models.ForeignKey('Manufacturer',on_delete = models.CASCADE)
+    sellers = models.ManyToManyField(CustomUser)
+    description = models.TextField(null=True)
     class Meta:
         ordering = ('id',)
     def __str__(self):
@@ -102,11 +100,15 @@ class Device(models.Model):
     name = models.CharField(max_length=50)
     specification =  models.ForeignKey(Specification,on_delete=models.SET_NULL,null=True)
     components = models.ManyToManyField(Component,related_name='components')
-    manufacturer = models.ForeignKey(CustomUser,related_name='device_manufacturer',on_delete=models.SET_NULL,null=True)
-    sellers = models.ManyToManyField(CustomUser,related_name='sellers')
-    model_number = models.PositiveIntegerField()
+    reuse_method = models.TextField(blank=True) 
+    manufacturer = models.ForeignKey('Manufacturer',on_delete = models.CASCADE)
+    sellers = models.ManyToManyField(CustomUser)
+    model_number = models.CharField(max_length=50)
     added = models.DateTimeField(auto_now_add=True)
+    price = models.CharField(max_length=10,null=True)
+    description = models.TextField(null=True)
 
+    file = models.ForeignKey(File,on_delete=models.SET_NULL,null=True) 
     class Meta:
         ordering = ('id',)
     def __str__(self):
@@ -121,11 +123,20 @@ class Banner(models.Model):
     def __str__(self):
         return "{} {}".format(str(self.seller),str(self.device))
 
+class CartToDevice(models.Model):
+    cart = models.ForeignKey('Cart',on_delete=models.CASCADE)
+    device = models.ForeignKey(Device,on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+class CartToComponent(models.Model):
+    cart = models.ForeignKey('Cart',on_delete=models.CASCADE)
+    component= models.ForeignKey(Component,on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+
 class Cart(models.Model):
     buyer = models.OneToOneField(CustomUser,on_delete=models.CASCADE,related_name='buyer_cart')
     updated = models.DateTimeField(auto_now=True)
-    banners = models.ManyToManyField(Banner,related_name='banner_cart')
-
+    components = models.ManyToManyField(Component)
+    devices = models.ManyToManyField(Device) 
     class Meta:
         ordering = ('id',)
     def __str__(self):
@@ -164,8 +175,8 @@ class Order(models.Model):
 class Wishlist(models.Model):
     buyer = models.OneToOneField(CustomUser,on_delete=models.CASCADE,related_name='buyer_wishlist')
     updated = models.DateTimeField(auto_now=True)
-    banners = models.ManyToManyField(Banner,related_name='banner_wishlist')
-
+    devices = models.ManyToManyField(Device)
+    components= models.ManyToManyField(Component)
     class Meta:
         ordering = ('id',)
     def __str__(self):
@@ -174,3 +185,12 @@ class Wishlist(models.Model):
 
 
     
+class Manufacturer(models.Model):
+    name= models.CharField(max_length=50)
+    description=models.TextField()
+
+    class Meta:
+        ordering = ('id',)
+
+    def __str__(self):
+        return str(self.name)
